@@ -1,0 +1,29 @@
+name: Update UHI data
+
+on:
+  schedule:
+    - cron: "7 * * * *"      # every hour, at 7 minutes past
+  workflow_dispatch:          # lets you run it by hand
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install earthengine-api
+      - run: python update_uhi.py
+        env:
+          GEE_KEY: ${{ secrets.GEE_KEY }}
+      - name: Save results
+        run: |
+          git config user.name "uhi-bot"
+          git config user.email "uhi-bot@users.noreply.github.com"
+          git add data/latest.json
+          git commit -m "Update UHI data" || exit 0
+          git push
