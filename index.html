@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Al Barsha 1 Urban Heat Island Monitor</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+:root{--bg:#F6F8FB;--card:#fff;--line:#E3E8EF;--text:#1F2937;--muted:#6B7280;--a:#F0805A;--r:#4BA3C7;--d:#E9A23B;--g:#5BAE7F}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.5}
+.wrap{max-width:1100px;margin:0 auto;padding:20px}
+h1{margin:0 0 4px;font-size:1.6rem}
+h2{font-size:1.1rem;margin:0 0 8px}
+.sub{color:var(--muted);margin:0 0 14px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
+.chip{background:#EAF1F8;color:#3B5B78;border-radius:999px;padding:4px 12px;font-size:.8rem}
+.chip.warn{background:#FDF1DC;color:#8A5A00}
+.chip.new{background:#E3F4EA;color:#1F7A4A}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin-bottom:18px}
+.card,.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;box-shadow:0 1px 3px rgba(31,41,55,.05)}
+.panel{margin-bottom:18px}
+.card h3{margin:0 0 6px;font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.big{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:2.1rem;font-weight:600;margin:2px 0}
+.small{font-size:.85rem;color:var(--muted)}
+.btns{margin-bottom:10px}
+.btns button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 12px;margin-right:6px;cursor:pointer;font-size:.85rem}
+.btns button.on{background:#EAF1F8;border-color:#9CB9D3;font-weight:600}
+.chartbox{position:relative;height:320px}
+#map{height:420px;border-radius:10px}
+table{width:100%;border-collapse:collapse;font-size:.9rem}
+th,td{text-align:right;padding:6px 8px;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--muted);font-weight:600}
+.tablebox{max-height:300px;overflow:auto}
+ul{margin:6px 0 0 18px;padding:0}
+footer{color:var(--muted);font-size:.8rem;margin:24px 0}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Al Barsha 1 Urban Heat Island Monitor</h1>
+<p class="sub">Target area vs reference area, measured by the Landsat 9 satellite. Updates automatically when a new scene is published.</p>
+<div class="chips">
+  <span class="chip" id="chipChecked">Loading…</span>
+  <span class="chip" id="chipScene"></span>
+  <span class="chip" id="chipNext"></span>
+</div>
+
+<div class="grid">
+  <div class="card"><h3>Latest gap (A − R)</h3><div class="big" id="latestGap">–</div><div class="small" id="latestNote"></div></div>
+  <div class="card"><h3>Summer average gap</h3><div class="big" id="sumGap">–</div><div class="small" id="sumNote"></div></div>
+  <div class="card"><h3>All-dates average gap</h3><div class="big" id="allGap">–</div><div class="small" id="allNote"></div></div>
+  <div class="card"><h3>Vegetation (NDVI)</h3><div class="big" id="ndvi">–</div><div class="small">Area A vs Area R. Near 0 means almost no plants.</div></div>
+</div>
+
+<div class="panel">
+  <h2>Surface temperature by satellite date</h2>
+  <div class="btns" id="seasonBtns">
+    <button data-s="all" class="on">All dates</button>
+    <button data-s="summer">Summer (Jun–Sep)</button>
+    <button data-s="cool">Cooler months</button>
+  </div>
+  <div class="chartbox"><canvas id="lineChart"></canvas></div>
+  <p class="small"><span class="dot" style="background:var(--a)"></span>Area A (target) <span class="dot" style="background:var(--r);margin-left:12px"></span>Area R (reference) <span class="dot" style="background:var(--d);margin-left:12px"></span>Gap A − R</p>
+</div>
+
+<div class="panel">
+  <h2>Study areas</h2>
+  <div id="map"></div>
+</div>
+
+<div class="panel">
+  <h2>All scenes (newest first)</h2>
+  <div class="tablebox"><table><thead><tr><th>Date</th><th>Area A °C</th><th>Area R °C</th><th>Gap °C</th></tr></thead><tbody id="rows"></tbody></table></div>
+</div>
+
+<div class="panel">
+  <h2>How to read this, and limits</h2>
+  <ul>
+    <li><b>Surface temperature</b> is how hot the ground and rooftops are, not the air temperature people feel.</li>
+    <li>Landsat 9 passes at about 10:30 am Dubai time, once every 16 days, so each value is a morning snapshot. Between passes the numbers don't change.</li>
+    <li>The gap is usually larger in summer than in winter. Look at the season buttons above the chart.</li>
+    <li>Scenes where the reference area read far too cold in summer (likely haze) are removed automatically. Cloudy pixels are masked out.</li>
+    <li>Landsat's thermal sensor sees about 100 m squares, resampled to 30 m. Each study area is about 0.25 km².</li>
+    <li>Area R is a nearby comparison area with more vegetation, not a pure rural baseline.</li>
+  </ul>
+</div>
+<footer>Data: USGS Landsat 9 Collection 2 Level 2 (band ST_B10), ESA Sentinel-2 (NDVI). Processed with Google Earth Engine.</footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+const COL={a:'#F0805A',r:'#4BA3C7',d:'#E9A23B'};
+let DATA=null,chart=null,mapDrawn=false,season='all';
+const $=id=>document.getElementById(id);
+const fmt=(v,d=1)=>(v==null||isNaN(v))?'–':Number(v).toFixed(d);
+const sgn=v=>(v==null||isNaN(v))?'–':(v>=0?'+':'')+Number(v).toFixed(1);
+const isSummer=d=>[6,7,8,9].includes(+d.slice(5,7));
+const mean=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:null;
+const dayMs=864e5;
+const dayNum=d=>Math.floor(Date.parse(d+'T00:00:00Z')/dayMs);
+const today=()=>Math.floor(Date.now()/dayMs);
+function dateFromNum(n){return new Date(n*dayMs).toISOString().slice(0,10);}
+function filtered(){return DATA.scenes.filter(s=>season==='all'||(season==='summer')===isSummer(s.date));}
+
+function drawChart(){
+  const s=filtered();
+  if(chart) chart.destroy();
+  chart=new Chart($('lineChart'),{type:'bar',data:{labels:s.map(x=>x.date),datasets:[
+    {type:'line',label:'Area A (target)',data:s.map(x=>x.area_a_c),borderColor:COL.a,backgroundColor:COL.a,tension:.25,yAxisID:'y'},
+    {type:'line',label:'Area R (reference)',data:s.map(x=>x.area_r_c),borderColor:COL.r,backgroundColor:COL.r,tension:.25,yAxisID:'y'},
+    {type:'bar',label:'Gap A − R',data:s.map(x=>x.difference_c),backgroundColor:COL.d+'99',yAxisID:'y1'}
+  ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+    scales:{y:{title:{display:true,text:'Surface temp (°C)'}},y1:{position:'right',grid:{drawOnChartArea:false},title:{display:true,text:'Gap (°C)'}}},
+    plugins:{legend:{display:false}}}});
+}
+function drawRows(){
+  $('rows').innerHTML=[...DATA.scenes].reverse().map(s=>'<tr><td>'+s.date+'</td><td>'+fmt(s.area_a_c)+'</td><td>'+fmt(s.area_r_c)+'</td><td>'+sgn(s.difference_c)+'</td></tr>').join('');
+}
+function drawMap(){
+  if(mapDrawn) return; mapDrawn=true;
+  const map=L.map('map');
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics'}).addTo(map);
+  const b=a=>[[a[1],a[0]],[a[3],a[2]]];
+  L.rectangle(b(DATA.area_a_bounds),{color:COL.a,weight:2,fillOpacity:.25}).addTo(map).bindTooltip('Area A (target)',{permanent:true});
+  L.rectangle(b(DATA.area_r_bounds),{color:COL.r,weight:2,fillOpacity:.25}).addTo(map).bindTooltip('Area R (reference)',{permanent:true});
+  map.fitBounds(L.latLngBounds(b(DATA.area_a_bounds)).extend(b(DATA.area_r_bounds)),{padding:[30,30]});
+}
+function render(){
+  const sc=DATA.scenes, last=sc[sc.length-1];
+  const mins=(Date.now()-Date.parse(DATA.updated_at_utc))/60000;
+  const c=$('chipChecked');
+  c.textContent='Data last checked '+(mins<90?Math.round(mins)+' min ago':Math.round(mins/60)+' h ago');
+  c.className='chip'+(mins>180?' warn':'');
+  const age=today()-dayNum(last.date);
+  const cs=$('chipScene');
+  cs.textContent='Latest Landsat 9 scene: '+last.date+' ('+age+' days ago)';
+  cs.className='chip'+(age<=7?' new':'');
+  const nextN=dayNum(last.date)+16, cn=$('chipNext');
+  if(nextN>=today()){cn.textContent='Next pass expected about '+dateFromNum(nextN);cn.className='chip';}
+  else{cn.textContent='A newer pass should exist (expected '+dateFromNum(nextN)+'). It may still be processing or was cloudy.';cn.className='chip warn';}
+  $('latestGap').textContent=sgn(last.difference_c)+' °C';
+  $('latestNote').textContent=last.date+': Area A '+fmt(last.area_a_c)+' °C, Area R '+fmt(last.area_r_c)+' °C';
+  const sum=sc.filter(s=>isSummer(s.date));
+  $('sumGap').textContent=sgn(mean(sum.map(s=>s.difference_c)))+' °C';
+  $('sumNote').textContent=sum.length+' scenes in June–September';
+  $('allGap').textContent=sgn(mean(sc.map(s=>s.difference_c)))+' °C';
+  $('allNote').textContent=sc.length+' scenes since '+DATA.period_start;
+  $('ndvi').textContent=fmt(DATA.ndvi_area_a,2)+' vs '+fmt(DATA.ndvi_area_r,2);
+  drawChart(); drawRows(); drawMap();
+}
+async function refresh(){
+  try{ DATA=await (await fetch('data/latest.json?_='+Date.now())).json(); }
+  catch(e){ $('chipChecked').textContent='Could not load data file'; $('chipChecked').className='chip warn'; return; }
+  render();
+}
+document.querySelectorAll('#seasonBtns button').forEach(b=>b.addEventListener('click',()=>{
+  season=b.dataset.s;
+  document.querySelectorAll('#seasonBtns button').forEach(x=>x.classList.toggle('on',x===b));
+  if(DATA) drawChart();
+}));
+refresh(); setInterval(refresh,15*60*1000);
+</script>
+</body>
+</html>
