@@ -1,12 +1,12 @@
 {
-  "updated_at_utc": "2026-11-13T05:59:11+00:00",
+  "updated_at_utc": "2026-11-13T07:13:41+00:00",
   "period_start": "2025-06-01",
-  "latest_scene_date": "2026-10-18",
-  "scenes_available": 28,
-  "scenes_used": 27,
-  "mean_area_a_c": 42.56,
-  "mean_area_r_c": 40.62,
-  "mean_difference_c": 1.94,
+  "latest_scene_date": "2026-11-03",
+  "scenes_available": 29,
+  "scenes_used": 28,
+  "mean_area_a_c": 42.43,
+  "mean_area_r_c": 40.55,
+  "mean_difference_c": 1.89,
   "ndvi_area_a": 0.029,
   "ndvi_area_r": 0.239,
   "area_a_bounds": [
@@ -183,6 +183,12 @@
       "area_a_c": 41.55,
       "area_r_c": 41.13,
       "difference_c": 0.42
+    },
+    {
+      "date": "2026-11-03",
+      "area_a_c": 38.92,
+      "area_r_c": 38.52,
+      "difference_c": 0.4
     }
   ]
 }
