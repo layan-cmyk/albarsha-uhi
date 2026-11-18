@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-11-18T12:02:36+00:00",
+  "updated_at_utc": "2026-11-18T13:11:28+00:00",
   "period_start": "2025-06-01",
   "latest_scene_date": "2026-11-03",
   "scenes_available": 29,
@@ -8,7 +8,7 @@
   "mean_area_r_c": 40.55,
   "mean_difference_c": 1.89,
   "ndvi_area_a": 0.029,
-  "ndvi_area_r": 0.238,
+  "ndvi_area_r": 0.237,
   "area_a_bounds": [
     55.2004,
     25.1114,
